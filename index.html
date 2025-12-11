@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1f2e">
+    <title>Life Warranty Vault</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <path d="M16 2L4 10V22L16 30L28 22V10L16 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M16 12V20M12 16H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h1>Life Warranty Vault</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn-manage-categories" id="manageCategoriesBtn" title="Gestisci Categorie">
+                    🏷️
+                </button>
+                <button class="btn-add" id="addItemBtn">
+                    <span>+</span> Aggiungi Oggetto
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Dashboard -->
+    <main class="dashboard" id="dashboard">
+        <section class="stats-grid">
+            <div class="stat-card value-card" onclick="vault.showPurchaseStatistics()" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stat-header">
+                    <h3 id="purchaseCardTitle">Valore Totale Acquisto</h3>
+                    <div class="icon">💰</div>
+                </div>
+                <div class="stat-value" id="totalPurchaseValue">€0</div>
+                <div class="stat-trend">
+                    <select id="yearFilterSelector" onchange="vault.changeYearFilter(this.value); event.stopPropagation();" onclick="event.stopPropagation()" style="background: var(--vault-surface); border: 1px solid var(--vault-border); color: var(--text-primary); padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-family: 'Sora', sans-serif; font-size: 0.875rem; cursor: pointer; margin-right: 0.5rem;">
+                        <option value="all">Totale</option>
+                    </select>
+                    <span>Clicca per dettagli</span>
+                </div>
+            </div>
+
+            <div class="stat-card current-card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stat-header">
+                    <h3>Valore Attuale Stimato</h3>
+                    <div class="icon">📊</div>
+                </div>
+                <div class="stat-value" id="currentValue">€0</div>
+                <div class="stat-change" id="valueChange">-</div>
+                <div class="stat-trend"><span id="itemCount">0</span> oggetti</div>
+            </div>
+
+            <div class="stat-card sell-card" onclick="vault.showSellableItems()" style="cursor: pointer; transition: transform 0.2s; border: 2px solid var(--gold-accent);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stat-header">
+                    <h3>Vendita Conveniente</h3>
+                    <div class="icon">🎯</div>
+                </div>
+                <div class="stat-value" id="sellableItems">0</div>
+                <div class="stat-trend">Clicca per vedere quali</div>
+            </div>
+
+            <div class="stat-card warranty-card">
+                <div class="stat-header">
+                    <h3>Garanzie in Scadenza</h3>
+                    <div class="icon">⚠️</div>
+                </div>
+                <div class="stat-value" id="expiringWarranties">0</div>
+                <div class="stat-trend">Prossimi 30 giorni</div>
+            </div>
+        </section>
+
+        <!-- Items List -->
+        <section class="items-section">
+            <!-- Warranty Expiring Alert -->
+            <div id="warrantyAlert" class="warranty-alert" style="display: none;">
+                <div class="alert-header">
+                    <span class="alert-icon">⚠️</span>
+                    <h3>Garanzie in Scadenza!</h3>
+                </div>
+                <div id="warrantyAlertContent"></div>
+            </div>
+
+            <div class="section-header">
+                <h2>I Tuoi Acquisti</h2>
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">Tutti</button>
+                    <button class="filter-btn" data-filter="electronics">Elettronica</button>
+                    <button class="filter-btn" data-filter="appliances">Elettrodomestici</button>
+                    <button class="filter-btn" data-filter="vehicles">Veicoli</button>
+                </div>
+            </div>
+
+            <div class="items-grid" id="itemsGrid">
+                <!-- Items will be rendered here by JavaScript -->
+            </div>
+
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">📦</div>
+                <h3>Nessun oggetto ancora</h3>
+                <p>Inizia ad aggiungere i tuoi acquisti per proteggere il loro valore e tenere traccia delle garanzie.</p>
+                <button class="btn-primary" onclick="document.getElementById('addItemBtn').click()">
+                    Aggiungi il Primo Oggetto
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Item Modal -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Aggiungi Nuovo Oggetto</h2>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+
+            <form id="addItemForm">
+                <div class="form-section">
+                    <h3>📸 Foto e Documenti</h3>
+                    
+                    <!-- Receipt Documents (Multiple photos/PDFs) -->
+                    <div class="photo-upload">
+                        <input type="file" id="receiptDocuments" accept="image/*,application/pdf" capture="environment" multiple style="display: none;">
+                        <button type="button" class="btn-upload" id="uploadReceiptBtn">
+                            <span class="upload-icon">🧾</span>
+                            <span>Aggiungi Scontrino (Foto o PDF)</span>
+                        </button>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center;">
+                            Puoi aggiungere più foto o un file PDF
+                        </div>
+                        <div id="receiptDocumentsPreview" class="photo-preview"></div>
+                    </div>
+                    
+                    <!-- Product Photo (Single) -->
+                    <div class="photo-upload" style="margin-top: 1.5rem;">
+                        <input type="file" id="productPhoto" accept="image/*" capture="environment" style="display: none;">
+                        <button type="button" class="btn-upload" id="uploadProductBtn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <span class="upload-icon">📷</span>
+                            <span>Foto Oggetto (opzionale)</span>
+                        </button>
+                        <div id="productPhotoPreview" class="photo-preview"></div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>📝 Dettagli</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="itemName">Nome Oggetto*</label>
+                            <input type="text" id="itemName" required placeholder="es. iPhone 15 Pro">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Categoria*</label>
+                            <select id="category" required>
+                                <option value="">Seleziona...</option>
+                                <option value="electronics">Elettronica</option>
+                                <option value="appliances">Elettrodomestici</option>
+                                <option value="vehicles">Veicoli</option>
+                                <option value="__customize__">➕ Personalizza...</option>
+                            </select>
+                            
+                            <!-- Custom Category Input (hidden by default) -->
+                            <div id="customCategoryInput" class="custom-category-input" style="display: none;">
+                                <input type="text" id="customCategoryName" placeholder="Nome nuova categoria (es. Sport, Gioielli...)" maxlength="30">
+                                
+                                <div class="depreciation-curve-selector">
+                                    <label style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: block;">
+                                        Come si svaluta questa categoria?
+                                    </label>
+                                    <select id="customCategoryDepreciation" style="width: 100%; background: var(--vault-surface); border: 1px solid var(--vault-border); color: var(--text-primary); padding: 0.5rem; border-radius: var(--radius-sm); font-family: 'Sora', sans-serif; font-size: 0.875rem;">
+                                        <option value="electronics">📱 Come Elettronica (-25% subito, -15%/anno)</option>
+                                        <option value="appliances">🏠 Come Elettrodomestici (-20% subito, -5%/anno)</option>
+                                        <option value="vehicles">🚗 Come Veicoli (-15% subito, -10%/anno)</option>
+                                        <option value="generic" selected>📦 Generica (-15% subito, -8%/anno)</option>
+                                        <option value="none">💎 Nessuna svalutazione (mantiene valore)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="custom-category-buttons">
+                                    <button type="button" class="btn-custom-small btn-save-custom" onclick="vault.saveCustomCategory()">✓ Salva</button>
+                                    <button type="button" class="btn-custom-small btn-cancel-custom" onclick="vault.cancelCustomCategory()">✗ Annulla</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="purchaseDate">Data Acquisto*</label>
+                            <input type="date" id="purchaseDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="price">Prezzo Pagato (€)*</label>
+                            <input type="number" id="price" step="0.01" required placeholder="0.00">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="warrantyMonths">Garanzia (mesi)*</label>
+                            <input type="number" id="warrantyMonths" value="24" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="condition">Condizione</label>
+                            <select id="condition">
+                                <option value="new">Nuovo</option>
+                                <option value="excellent">Ottimo</option>
+                                <option value="good">Buono</option>
+                                <option value="fair">Discreto</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBtn">Annulla</button>
+                    <button type="submit" class="btn-primary">💾 Salva Oggetto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Item Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content modal-detail">
+            <div class="modal-header">
+                <h2 id="detailTitle"></h2>
+                <button class="close-btn" id="closeDetailBtn">&times;</button>
+            </div>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Manage Categories Modal -->
+    <div class="modal" id="manageCategoriesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🏷️ Gestisci Categorie Personalizzate</h2>
+                <button class="close-btn" id="closeManageCategoriesBtn">&times;</button>
+            </div>
+            <div class="manage-categories-content">
+                <div class="categories-info">
+                    <p>Qui puoi modificare o eliminare le categorie personalizzate che hai creato.</p>
+                    <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">
+                        ⚠️ Le categorie di base (Elettronica, Elettrodomestici, Veicoli) non possono essere eliminate.
+                    </p>
+                </div>
+                
+                <div id="customCategoriesList" class="custom-categories-list">
+                    <!-- Categories will be rendered here by JavaScript -->
+                </div>
+
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--vault-border);">
+                    <button class="btn-primary" onclick="vault.closeManageCategoriesModal()">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.875rem; border-top: 1px solid var(--vault-border); margin-top: 4rem;">
+        <div style="max-width: 1200px; margin: 0 auto;">
+            <div style="margin-bottom: 0.5rem; font-weight: 600;">Life Warranty Vault</div>
+            <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.5rem;">Version 2.73</div>
+            <div style="font-size: 0.75rem; opacity: 0.6;">Developed by Francesco Zantedeschi</div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
